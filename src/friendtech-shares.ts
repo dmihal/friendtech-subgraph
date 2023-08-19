@@ -4,8 +4,8 @@ import {
   Trade as TradeEvent
 } from "../generated/FriendtechShares/FriendtechShares"
 import { Account, Position, Protocol, Trade } from "../generated/schema"
-
-let EIGHTEEN_DECIMALS = BigInt.fromI32(10).pow(18).toBigDecimal()
+import { toETH } from "./utils"
+import { updateTimeData } from "./time-data"
 
 function getAccount(address: Address): Account {
   let account = Account.load(address)
@@ -41,13 +41,6 @@ function getProtocol(): Protocol {
     protocol.tradingFees = BigInt.zero().toBigDecimal()
   }
   return protocol as Protocol
-}
-
-function toETH(amount: BigInt): BigDecimal {
-  if (amount == BigInt.zero()) {
-    return BigDecimal.zero()
-  }
-  return amount.divDecimal(EIGHTEEN_DECIMALS)
 }
 
 export function handleTrade(event: TradeEvent): void {
@@ -88,6 +81,8 @@ export function handleTrade(event: TradeEvent): void {
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
   entity.transactionHash = event.transaction.hash
+
+  updateTimeData(event)
 
   if (position.shares == 0) {
     store.remove("Position", position.id.toHexString())

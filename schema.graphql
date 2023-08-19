@@ -12,6 +12,48 @@ type Account @entity {
   joined: Int!
   positions: [Position!]! @derivedFrom(field: "owner")
   shareholders: [Position!]! @derivedFrom(field: "subject")
+  hourData: [AccountHourData!]! @derivedFrom(field: "account")
+  dayData: [AccountDayData!]! @derivedFrom(field: "account")
+}
+
+type AccountHourData @entity {
+  id: String!
+  timestamp: Int!
+  account: Account! # address
+  volume: BigDecimal!
+  startPrice: BigDecimal!
+  endPrice: BigDecimal!
+  minPrice: BigDecimal!
+  maxPrice: BigDecimal!
+  holders: Int!
+}
+
+type AccountDayData @entity {
+  id: String!
+  timestamp: Int!
+  account: Account! # address
+  volume: BigDecimal!
+  startPrice: BigDecimal
+  endPrice: BigDecimal!
+  minPrice: BigDecimal!
+  maxPrice: BigDecimal
+  holders: Int!
+}
+
+type ProtocolHourData @entity {
+  id: String!
+  timestamp: Int!
+  volume: BigDecimal!
+  users: Int!
+  shares: Int!
+}
+
+type ProtocolDayData @entity {
+  id: String!
+  timestamp: Int!
+  volume: BigDecimal!
+  users: Int!
+  shares: Int!
 }
 
 type Position @entity {
