@@ -1,41 +1,101 @@
+import { Address, BigDecimal, BigInt, store } from "@graphprotocol/graph-ts"
 import {
   OwnershipTransferred as OwnershipTransferredEvent,
   Trade as TradeEvent
 } from "../generated/FriendtechShares/FriendtechShares"
-import { OwnershipTransferred, Trade } from "../generated/schema"
+import { Account, Position, Protocol, Trade } from "../generated/schema"
 
-export function handleOwnershipTransferred(
-  event: OwnershipTransferredEvent
-): void {
-  let entity = new OwnershipTransferred(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.previousOwner = event.params.previousOwner
-  entity.newOwner = event.params.newOwner
+let EIGHTEEN_DECIMALS = BigInt.fromI32(10).pow(18).toBigDecimal()
 
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
+function getAccount(address: Address): Account {
+  let account = Account.load(address)
+  if (account == null) {
+    account = new Account(address)
+    account.shareSupply = 0
+    account.joined = 0
+    account.tradingFees = BigInt.zero().toBigDecimal()
+    account.lastTradePrice = BigInt.zero().toBigDecimal()
+  }
+  return account as Account
+}
 
-  entity.save()
+function getPosition(owner: Address, subject: Address): Position {
+  let id = owner.concat(subject)
+  let position = Position.load(id)
+  if (position == null) {
+    position = new Position(id)
+    position.owner = owner
+    position.subject = subject
+    position.shares = 0
+    position.save()
+  }
+  return position as Position
+}
+
+function getProtocol(): Protocol {
+  let id = "protocol"
+  let protocol = Protocol.load(id)
+  if (protocol == null) {
+    protocol = new Protocol(id)
+    protocol.accounts = 0
+    protocol.tradingFees = BigInt.zero().toBigDecimal()
+  }
+  return protocol as Protocol
+}
+
+function toETH(amount: BigInt): BigDecimal {
+  if (amount == BigInt.zero()) {
+    return BigDecimal.zero()
+  }
+  return amount.divDecimal(EIGHTEEN_DECIMALS)
 }
 
 export function handleTrade(event: TradeEvent): void {
   let entity = new Trade(
     event.transaction.hash.concatI32(event.logIndex.toI32())
   )
+
+  let trader = getAccount(event.params.trader)
+  let subject = getAccount(event.params.subject)
+  let protocol = getProtocol()
+
+  let position = getPosition(event.params.trader, event.params.subject)
+  if (event.params.isBuy) {
+    position.shares += event.params.shareAmount.toI32()
+  } else {
+    position.shares -= event.params.shareAmount.toI32()
+  }
+
+  subject.lastTradePrice = toETH(event.params.ethAmount)
+  subject.shareSupply = event.params.supply.toI32()
+  subject.tradingFees += toETH(event.params.subjectEthAmount)
+  if (subject.joined == 0) {
+    subject.joined = event.block.timestamp.toI32()
+    protocol.accounts += 1
+  }
+
+  protocol.tradingFees += toETH(event.params.protocolEthAmount)
+
   entity.trader = event.params.trader
   entity.subject = event.params.subject
   entity.isBuy = event.params.isBuy
-  entity.shareAmount = event.params.shareAmount
-  entity.ethAmount = event.params.ethAmount
-  entity.protocolEthAmount = event.params.protocolEthAmount
-  entity.subjectEthAmount = event.params.subjectEthAmount
-  entity.supply = event.params.supply
+  entity.shareAmount = event.params.shareAmount.toI32()
+  entity.ethAmount = toETH(event.params.ethAmount)
+  entity.protocolEthAmount = toETH(event.params.protocolEthAmount)
+  entity.subjectEthAmount = toETH(event.params.subjectEthAmount)
+  entity.supply = event.params.supply.toI32()
 
   entity.blockNumber = event.block.number
   entity.blockTimestamp = event.block.timestamp
   entity.transactionHash = event.transaction.hash
 
+  if (position.shares == 0) {
+    store.remove("Position", position.id.toHexString())
+  } else {
+    position.save()
+  }
   entity.save()
+  trader.save()
+  subject.save()
+  protocol.save()
 }

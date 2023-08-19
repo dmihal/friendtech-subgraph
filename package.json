@@ -5,14 +5,15 @@
     "codegen": "graph codegen",
     "build": "graph build",
     "deploy": "graph deploy --node https://api.thegraph.com/deploy/ dmihal/friend-tech",
+    "deploy-staging": "graph deploy --node https://api.thegraph.com/deploy/ dmihal/friendtech-staging",
     "create-local": "graph create --node http://localhost:8020/ dmihal/friend-tech",
     "remove-local": "graph remove --node http://localhost:8020/ dmihal/friend-tech",
     "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 dmihal/friend-tech",
     "test": "graph test"
   },
   "dependencies": {
-    "@graphprotocol/graph-cli": "0.42.3",
-    "@graphprotocol/graph-ts": "0.29.1"
+    "@graphprotocol/graph-cli": "0.55.0",
+    "@graphprotocol/graph-ts": "0.31.0"
   },
   "devDependencies": { "matchstick-as": "0.5.0" }
 }

@@ -4,24 +4,22 @@ schema:
 dataSources:
   - kind: ethereum
     name: FriendtechShares
-    network: base-testnet
+    network: base
     source:
       address: "0xcf205808ed36593aa40a44f10c7f7c2f67d4a4d4"
       abi: FriendtechShares
-      startBlock: 0
+      startBlock: 2430440
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7
       language: wasm/assemblyscript
       entities:
-        - OwnershipTransferred
+        - Account
         - Trade
       abis:
         - name: FriendtechShares
           file: ./abis/FriendtechShares.json
       eventHandlers:
-        - event: OwnershipTransferred(indexed address,indexed address)
-          handler: handleOwnershipTransferred
         - event: Trade(address,address,bool,uint256,uint256,uint256,uint256,uint256)
           handler: handleTrade
       file: ./src/friendtech-shares.ts

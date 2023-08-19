@@ -1,22 +1,36 @@
-type OwnershipTransferred @entity(immutable: true) {
+type Protocol @entity {
+  id: String!
+  accounts: Int!
+  tradingFees: BigDecimal!
+}
+
+type Account @entity {
   id: Bytes!
-  previousOwner: Bytes! # address
-  newOwner: Bytes! # address
-  blockNumber: BigInt!
-  blockTimestamp: BigInt!
-  transactionHash: Bytes!
+  shareSupply: Int!
+  tradingFees: BigDecimal!
+  lastTradePrice: BigDecimal!
+  joined: Int!
+  positions: [Position!]! @derivedFrom(field: "owner")
+  shareholders: [Position!]! @derivedFrom(field: "subject")
+}
+
+type Position @entity {
+  id: Bytes!
+  owner: Account! # address
+  subject: Account! # address
+  shares: Int!
 }
 
 type Trade @entity(immutable: true) {
   id: Bytes!
-  trader: Bytes! # address
-  subject: Bytes! # address
+  trader: Account! # address
+  subject: Account! # address
   isBuy: Boolean! # bool
-  shareAmount: BigInt! # uint256
-  ethAmount: BigInt! # uint256
-  protocolEthAmount: BigInt! # uint256
-  subjectEthAmount: BigInt! # uint256
-  supply: BigInt! # uint256
+  shareAmount: Int! # uint256
+  ethAmount: BigDecimal! # uint256
+  protocolEthAmount: BigDecimal! # uint256
+  subjectEthAmount: BigDecimal! # uint256
+  supply: Int! # uint256
   blockNumber: BigInt!
   blockTimestamp: BigInt!
   transactionHash: Bytes!
