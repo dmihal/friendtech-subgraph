@@ -9,6 +9,8 @@ type Account @entity {
   shareSupply: Int!
   tradingFees: BigDecimal!
   lastTradePrice: BigDecimal!
+  credibility: BigDecimal!
+  credibilityPriceRatio: BigDecimal!
   joined: Int!
   positions: [Position!]! @derivedFrom(field: "owner")
   shareholders: [Position!]! @derivedFrom(field: "subject")
@@ -26,6 +28,10 @@ type AccountHourData @entity {
   minPrice: BigDecimal!
   maxPrice: BigDecimal!
   holders: Int!
+  credibilityInflows: BigDecimal!
+  credibilityOutflows: BigDecimal!
+  netCredibility: BigDecimal!
+  credibilityPriceRatio: BigDecimal!
 }
 
 type AccountDayData @entity {
@@ -38,6 +44,10 @@ type AccountDayData @entity {
   minPrice: BigDecimal!
   maxPrice: BigDecimal
   holders: Int!
+  credibilityInflows: BigDecimal!
+  credibilityOutflows: BigDecimal!
+  netCredibility: BigDecimal!
+  credibilityPriceRatio: BigDecimal!
 }
 
 type ProtocolHourData @entity {
@@ -60,6 +70,7 @@ type Position @entity {
   id: Bytes!
   owner: Account! # address
   subject: Account! # address
+  credibility: BigDecimal!
   shares: Int!
 }
 

@@ -1,4 +1,4 @@
-import { BigInt } from "@graphprotocol/graph-ts";
+import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
 import { AccountDayData, AccountHourData, ProtocolDayData, ProtocolHourData } from "../generated/schema";
 import { Trade } from "../generated/FriendtechShares/FriendtechShares";
 import { toETH } from "./utils";
@@ -7,7 +7,11 @@ function getPrecision(amount: BigInt, precision: u32): u32 {
   return amount.toU32() / precision * precision
 }
 
-export function updateTimeData(event: Trade): void {
+export function updateTimeData(event: Trade, credibility: BigDecimal): void {
+  if (event.params.shareAmount.toI32() == 0) {
+    return
+  }
+
   let hour = getPrecision(event.block.timestamp, 3600)
   let day = getPrecision(event.block.timestamp, 86400)
 
@@ -23,6 +27,10 @@ export function updateTimeData(event: Trade): void {
     subjectHourData.minPrice = price
     subjectHourData.maxPrice = price
     subjectHourData.holders = 0
+    subjectHourData.credibilityInflows = BigInt.zero().toBigDecimal()
+    subjectHourData.credibilityOutflows = BigInt.zero().toBigDecimal()
+    subjectHourData.netCredibility = BigInt.zero().toBigDecimal()
+    subjectHourData.credibilityPriceRatio = BigInt.zero().toBigDecimal()
   }
   let subjectDayData = AccountDayData.load(event.params.subject.toHex() + "-" + day.toString())
   if (subjectDayData == null) {
@@ -34,6 +42,10 @@ export function updateTimeData(event: Trade): void {
     subjectDayData.minPrice = price
     subjectDayData.maxPrice = price
     subjectDayData.holders = 0
+    subjectDayData.credibilityInflows = BigInt.zero().toBigDecimal()
+    subjectDayData.credibilityOutflows = BigInt.zero().toBigDecimal()
+    subjectDayData.netCredibility = BigInt.zero().toBigDecimal()
+    subjectDayData.credibilityPriceRatio = BigInt.zero().toBigDecimal()
   }
 
   let protocolHourData = ProtocolHourData.load(hour.toString())
@@ -64,6 +76,20 @@ export function updateTimeData(event: Trade): void {
   }
   if (price > subjectHourData.maxPrice) {
     subjectHourData.maxPrice = price
+  }
+
+  if (event.params.isBuy) {
+    subjectHourData.credibilityInflows += credibility
+    subjectDayData.credibilityInflows += credibility
+  } else {
+    subjectHourData.credibilityOutflows += credibility
+    subjectDayData.credibilityOutflows += credibility
+  }
+  subjectHourData.netCredibility = subjectHourData.credibilityInflows - subjectHourData.credibilityOutflows
+  subjectDayData.netCredibility = subjectDayData.credibilityInflows - subjectDayData.credibilityOutflows
+  if (price.gt(BigInt.zero().toBigDecimal())) {
+    subjectHourData.credibilityPriceRatio = subjectHourData.netCredibility / price
+    subjectDayData.credibilityPriceRatio = subjectDayData.netCredibility / price
   }
 
   protocolHourData.volume += price

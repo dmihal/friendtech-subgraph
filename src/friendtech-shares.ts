@@ -13,6 +13,8 @@ function getAccount(address: Address): Account {
     account = new Account(address)
     account.shareSupply = 0
     account.joined = 0
+    account.credibility = BigInt.zero().toBigDecimal()
+    account.credibilityPriceRatio = BigInt.zero().toBigDecimal()
     account.tradingFees = BigInt.zero().toBigDecimal()
     account.lastTradePrice = BigInt.zero().toBigDecimal()
   }
@@ -27,6 +29,7 @@ function getPosition(owner: Address, subject: Address): Position {
     position.owner = owner
     position.subject = subject
     position.shares = 0
+    position.credibility = BigInt.zero().toBigDecimal()
     position.save()
   }
   return position as Position
@@ -67,6 +70,13 @@ export function handleTrade(event: TradeEvent): void {
     protocol.accounts += 1
   }
 
+  let currentCredibility = trader.lastTradePrice * BigInt.fromI32(position.shares).toBigDecimal()
+  subject.credibility = subject.credibility - position.credibility + currentCredibility
+  if (subject.lastTradePrice.gt(BigInt.zero().toBigDecimal())) {
+    subject.credibilityPriceRatio = subject.credibility / subject.lastTradePrice
+  }
+  position.credibility = currentCredibility
+
   protocol.tradingFees += toETH(event.params.protocolEthAmount)
 
   entity.trader = event.params.trader
@@ -82,7 +92,7 @@ export function handleTrade(event: TradeEvent): void {
   entity.blockTimestamp = event.block.timestamp
   entity.transactionHash = event.transaction.hash
 
-  updateTimeData(event)
+  updateTimeData(event, currentCredibility)
 
   if (position.shares == 0) {
     store.remove("Position", position.id.toHexString())
