@@ -17,6 +17,8 @@ function getAccount(address: Address): Account {
     account.credibilityPriceRatio = BigInt.zero().toBigDecimal()
     account.tradingFees = BigInt.zero().toBigDecimal()
     account.lastTradePrice = BigInt.zero().toBigDecimal()
+    account.marketCap = BigInt.zero().toBigDecimal()
+    account.tvl = BigInt.zero().toBigDecimal()
   }
   return account as Account
 }
@@ -53,29 +55,38 @@ export function handleTrade(event: TradeEvent): void {
 
   let trader = getAccount(event.params.trader)
   let subject = getAccount(event.params.subject)
+  let position = getPosition(event.params.trader, event.params.subject)
   let protocol = getProtocol()
 
-  let position = getPosition(event.params.trader, event.params.subject)
+  let price = toETH(event.params.ethAmount)
+
   if (event.params.isBuy) {
     position.shares += event.params.shareAmount.toI32()
+    subject.tvl += price
   } else {
     position.shares -= event.params.shareAmount.toI32()
+    subject.tvl -= price
   }
 
-  subject.lastTradePrice = toETH(event.params.ethAmount)
+  subject.lastTradePrice = price
   subject.shareSupply = event.params.supply.toI32()
+  subject.marketCap = event.params.supply.toBigDecimal() * price
   subject.tradingFees += toETH(event.params.subjectEthAmount)
   if (subject.joined == 0) {
     subject.joined = event.block.timestamp.toI32()
     protocol.accounts += 1
   }
 
-  let currentCredibility = trader.lastTradePrice * BigInt.fromI32(position.shares).toBigDecimal()
-  subject.credibility = subject.credibility - position.credibility + currentCredibility
-  if (subject.lastTradePrice.gt(BigInt.zero().toBigDecimal())) {
-    subject.credibilityPriceRatio = subject.credibility / subject.lastTradePrice
+  let currentCredibility = BigInt.zero().toBigDecimal()
+  // No credibility from buying yourself
+  if (event.params.trader != event.params.subject) {
+    currentCredibility = trader.lastTradePrice * BigInt.fromI32(position.shares).toBigDecimal()
+    subject.credibility = subject.credibility - position.credibility + currentCredibility
+    if (subject.lastTradePrice.gt(BigInt.zero().toBigDecimal())) {
+      subject.credibilityPriceRatio = subject.credibility / subject.lastTradePrice
+    }
+    position.credibility = currentCredibility
   }
-  position.credibility = currentCredibility
 
   protocol.tradingFees += toETH(event.params.protocolEthAmount)
 
@@ -83,7 +94,7 @@ export function handleTrade(event: TradeEvent): void {
   entity.subject = event.params.subject
   entity.isBuy = event.params.isBuy
   entity.shareAmount = event.params.shareAmount.toI32()
-  entity.ethAmount = toETH(event.params.ethAmount)
+  entity.ethAmount = price
   entity.protocolEthAmount = toETH(event.params.protocolEthAmount)
   entity.subjectEthAmount = toETH(event.params.subjectEthAmount)
   entity.supply = event.params.supply.toI32()
